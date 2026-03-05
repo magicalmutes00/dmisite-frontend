@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Google Script</title>
+</head>
+<body>
+    <h2>Test Google Script</h2>
+    <button onclick="testScript()">Test Script</button>
+    <div id="result"></div>
+
+    <script>
+        async function testScript() {
+            const testData = {
+                sheetType: 'sports',
+                type: 'Sports Day',
+                gender: 'Boy',
+                studentName: 'Test Student',
+                houseName: 'Green',
+                department: 'CSE',
+                year: '1st Year',
+                gameName: 'Test Game'
+            };
+
+            try {
+                const response = await fetch('https://script.google.com/macros/s/AKfycbyYPQqtunMIjg-dSxhPkl93i6A5Jmh5zTdrkfh7ZX2biO2wn_B9fuMX-WuBboLHYsyC/exec', {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                document.getElementById('result').innerHTML = 'Request sent! Check your Google Sheet.';
+                console.log('Test data sent:', testData);
+                console.log('Response:', response);
+            } catch (error) {
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+                console.error('Error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
