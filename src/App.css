@@ -2761,3 +2761,123 @@ section.section-light div[style*="background: rgb(248, 250, 252)"] {
     right: 1.25rem;
   }
 }
+
+/* EVENT & GROUP PILLS UI */
+.btn-event-pill {
+  padding: 0.6rem 1.25rem;
+  border-radius: 50px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-base);
+  color: var(--color-text-dark);
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-event-pill:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.btn-event-pill.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+}
+
+.section-light .btn-event-pill {
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--color-text-medium);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.section-light .btn-event-pill:hover {
+  color: white;
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--color-primary);
+}
+
+.section-light .btn-event-pill.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.selected-group-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.selected-group-badge button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  margin-left: 0.5rem;
+  cursor: pointer;
+  padding: 0 0 0 0.2rem;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+
+.selected-group-badge button:hover {
+  color: white;
+}
+
+.btn-group-outline {
+  padding: 0.5rem 1rem;
+  border: 1px dashed var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.section-light .btn-group-outline {
+  border-color: var(--color-primary);
+  color: #a5b4fc;
+}
+
+.btn-group-outline:hover {
+  background: var(--color-primary-bg);
+  border-style: solid;
+}
+
+.section-light .btn-group-outline:hover {
+  background: rgba(99, 102, 241, 0.2);
+  color: white;
+}
+
+.btn-add-another {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-base);
+  color: var(--color-primary);
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.section-light .btn-add-another {
+  background: rgba(15, 23, 42, 0.5);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #a5b4fc;
+}
+
+.btn-add-another:hover {
+  background: var(--color-border);
+}
+
+.section-light .btn-add-another:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--color-primary);
+  color: white;
+}

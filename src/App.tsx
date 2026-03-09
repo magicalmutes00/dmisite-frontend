@@ -25,6 +25,20 @@ function Home() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<{ name: string; event: string; type: string; scheduleImage: string | null } | null>(null);
 
+  const [selectedEventGroups, setSelectedEventGroups] = useState<string[]>([]);
+  const [groupParticipants, setGroupParticipants] = useState<Record<string, string>>({});
+  const [showAddGroup, setShowAddGroup] = useState(false);
+
+  // New events logic
+  const eventsList = [
+    "Dance", 
+    "Singing", 
+    "Drama", 
+    "Other events"
+  ];
+  
+  const standardGroupsList = ["A Group", "B Group", "C Group", "D Group", "E Group"];
+
   const [sportsFormData, setSportsFormData] = useState<FormData>({
     gender: '',
     houseName: '',
@@ -181,8 +195,28 @@ function Home() {
       return;
     }
 
+    if (selectedEventGroups.length === 0) {
+      alert('Please select at least one group for the event');
+      return;
+    }
+
+    // Validate that all selected groups have participant counts greater than 0
+    for (const grp of selectedEventGroups) {
+      if (!groupParticipants[grp] || parseInt(groupParticipants[grp]) <= 0) {
+        alert(`Please enter the number of participants for ${grp}`);
+        return;
+      }
+    }
+
     try {
-      const collegeDataWithSheet = { ...collegeFormData, sheetType: 'college', type: 'College Day' };
+      const formattedGroups = selectedEventGroups.map(grp => `${grp} (${groupParticipants[grp]} participants)`).join(', ');
+      const collegeDataWithSheet = { 
+        ...collegeFormData, 
+        selectedGroups: formattedGroups,
+        eventName: `${collegeFormData.eventName} [${formattedGroups}]`,
+        sheetType: 'college', 
+        type: 'College Day' 
+      };
       await fetch(GOOGLE_SCRIPT_URL_COLLEGE, {
         method: 'POST',
         mode: 'no-cors',
@@ -208,6 +242,9 @@ function Home() {
         songType: '',
         choreographer: ''
       });
+      setSelectedEventGroups([]);
+      setGroupParticipants({});
+      setShowAddGroup(false);
     } catch (error) {
       console.error('Error submitting form:', error);
       alert('Registration successful! (Data saved)');
@@ -709,6 +746,7 @@ function Home() {
                       required
                     >
                       <option value="">Select Department</option>
+                      <option value="AI&DS">Artificial intelligence&Data science</option>
                       <option value="CSE">Computer Science Engineering</option>
                       <option value="ECE">Electronics & Communication</option>
                       <option value="EEE">Electrical & Electronics</option>
@@ -819,12 +857,11 @@ function Home() {
                       required
                     >
                       <option value="">Select Department</option>
+                      <option value="AI&DS">Artificial Intelligence & Data Science</option>
                       <option value="CSE">Computer Science Engineering</option>
                       <option value="ECE">Electronics & Communication</option>
                       <option value="EEE">Electrical & Electronics</option>
-                      <option value="MECH">Mechanical Engineering</option>
-                      <option value="CIVIL">Civil Engineering</option>
-                      <option value="IT">Information Technology</option>
+                      <option value="MECH">Mechanical Engineering</option> <option value="IT">Information Technology</option>
                     </select>
                   </div>
                 </div>
@@ -832,21 +869,104 @@ function Home() {
 
               <div className="form-group">
                 <label className="form-label">Event Name *</label>
-                <select
-                  className="form-control-custom"
-                  value={collegeFormData.eventName}
-                  onChange={(e) => setCollegeFormData({ ...collegeFormData, eventName: e.target.value })}
-                  required
-                >
-                  <option value="">Select Event</option>
-                  <option value="Dance">Dance</option>
-                  <option value="Singing">Singing</option>
-                  <option value="Drama">Drama</option>
-                  <option value="Fashion Show">Fashion Show</option>
-                  <option value="Art Exhibition">Art Exhibition</option>
-                  <option value="Talent Show">Talent Show</option>
-                </select>
+                <div className="d-flex flex-wrap gap-2 mb-2">
+                  {eventsList.map(evt => (
+                    <button
+                      type="button"
+                      key={evt}
+                      className={`btn-event-pill ${collegeFormData.eventName === evt ? 'active' : ''}`}
+                      onClick={() => {
+                        setCollegeFormData({ ...collegeFormData, eventName: evt });
+                        setSelectedEventGroups([]);
+                        setGroupParticipants({});
+                        setShowAddGroup(false);
+                      }}
+                    >
+                      {evt}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {collegeFormData.eventName && (
+                <div className="form-group" style={{ background: 'rgba(15, 23, 42, 0.4)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)', animation: 'fadeIn 0.5s ease' }}>
+                  <label className="form-label text-primary" style={{ marginBottom: '1rem' }}>Select Groups for {collegeFormData.eventName} *</label>
+                  
+                  <div className="event-groups-container">
+                    {selectedEventGroups.length > 0 && (
+                      <div className="selected-groups mb-4">
+                        <p className="mb-3" style={{ color: '#94a3b8', fontSize: '0.95rem', fontWeight: 600 }}>Your Selection & Participants:</p>
+                        <div className="d-flex flex-column gap-3">
+                          {selectedEventGroups.map(grp => (
+                            <div key={grp} style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+                              <button 
+                                type="button" 
+                                onClick={() => {
+                                  setSelectedEventGroups(selectedEventGroups.filter(g => g !== grp));
+                                  const newObj = { ...groupParticipants };
+                                  delete newObj[grp];
+                                  setGroupParticipants(newObj);
+                                }}
+                                style={{ position: 'absolute', top: '10px', right: '10px', background: 'none', border: 'none', color: '#ef4444', fontSize: '0.9rem', cursor: 'pointer' }}
+                              >
+                                ✕ Remove
+                              </button>
+                              
+                              <h5 style={{ color: 'var(--color-primary)', fontSize: '1.1rem', marginBottom: '0.75rem' }}>{grp}</h5>
+                              
+                              <div className="form-group mb-0">
+                                <label className="form-label" style={{ fontSize: '0.85rem' }}>Number of Participants *</label>
+                                <input 
+                                  type="number" 
+                                  className="form-control-custom"
+                                  placeholder="Enter number"
+                                  min="1"
+                                  value={groupParticipants[grp] || ''}
+                                  onChange={(e) => setGroupParticipants({ ...groupParticipants, [grp]: e.target.value })}
+                                  required
+                                  style={{ padding: '0.5rem 1rem' }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedEventGroups.length === 0 || showAddGroup) ? (
+                      <div>
+                        {selectedEventGroups.length > 0 && <p className="mb-2" style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Select another group:</p>}
+                        <div className="d-flex flex-wrap gap-2">
+                          {standardGroupsList.map(grp => {
+                            if (selectedEventGroups.includes(grp)) return null;
+                            return (
+                              <button
+                                type="button"
+                                key={grp}
+                                className="btn-group-outline"
+                                onClick={() => {
+                                  setSelectedEventGroups([...selectedEventGroups, grp]);
+                                  setShowAddGroup(false);
+                                }}
+                              >
+                                + {grp}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        type="button" 
+                        className="btn-add-another" 
+                        onClick={() => setShowAddGroup(true)}
+                      >
+                        <i className="fas fa-plus me-1"></i> Add Another Group
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Staff In-Charge Name *</label>
