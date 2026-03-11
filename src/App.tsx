@@ -988,7 +988,7 @@ function Home() {
                 </div>
               )}
 
-              <div className="form-group">
+              {/* <div className="form-group">
                 <label className="form-label">Staff In-Charge Name *</label>
                 <input
                   type="text"
@@ -998,7 +998,7 @@ function Home() {
                   onChange={(e) => setCollegeFormData({ ...collegeFormData, staffInCharge: e.target.value })}
                   required
                 />
-              </div>
+              </div> */}
 
               <div className="row">
                 <div className="col-md-6">
