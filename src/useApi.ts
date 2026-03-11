@@ -5,12 +5,13 @@ import {
     adminLogout as logoutFn,
     verifyAdminToken,
     updateSiteData,
-    uploadImage
+    uploadImage,
+    deleteImage
 } from './apiService';
-import type { SiteData, GalleryImage, HouseLeaders } from './apiService';
+import type { SiteData, GalleryImage, HouseLeaders, LinkItem } from './apiService';
 
 // Re-export types for components that import from this file
-export type { SiteData, GalleryImage, HouseLeaders };
+export type { SiteData, GalleryImage, HouseLeaders, LinkItem };
 export type { TimelineEvent, VideoItem, Coordinator } from './apiService';
 
 // ============================================================
@@ -22,6 +23,7 @@ export const DEFAULT_DATA: SiteData = {
     girlsSchedule: '',
     matchSchedule: '',
     announcements: [],
+    links: [],
     galleryImages: [],
     timeline: [
         { time: '8:00 AM', title: 'Registration & Assembly', desc: 'Participant check-in and opening ceremony', type: 'sports' },
@@ -149,6 +151,8 @@ export async function uploadFile(file: File, folder: string): Promise<string> {
     const { url } = await uploadImage(file, folder);
     return url;
 }
+
+export { deleteImage };
 
 // ============================================================
 // AUTH: Admin authentication via JWT

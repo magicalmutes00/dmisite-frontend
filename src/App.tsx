@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
-import { useSiteData, saveSiteData, uploadFile, loginAdmin, logoutAdmin, useAdminAuth, saveRegistration } from './useApi'
+import { useSiteData, saveSiteData, uploadFile, loginAdmin, logoutAdmin, useAdminAuth, saveRegistration, deleteImage } from './useApi'
 import type { TimelineEvent, SiteData, GalleryImage } from './useApi'
 
 type HouseColor = keyof SiteData['leaders'];
@@ -24,6 +24,7 @@ function Home() {
   const [galleryFilter, setGalleryFilter] = useState<'sports' | 'college'>('sports');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState<{ name: string; event: string; type: string; scheduleImage: string | null } | null>(null);
+  const [showLinksDropdown, setShowLinksDropdown] = useState(false);
 
   const [selectedEventGroups, setSelectedEventGroups] = useState<string[]>([]);
   const [groupParticipants, setGroupParticipants] = useState<Record<string, string>>({});
@@ -289,6 +290,33 @@ function Home() {
                   </a>
                 </li>
               ))}
+              
+              {/* Notification Bell */}
+              <li className="nav-item">
+                <div className="nav-bell-wrapper" onClick={() => setShowLinksDropdown(!showLinksDropdown)}>
+                  <i className="fas fa-bell nav-bell-icon"></i>
+                  {adminData.links && adminData.links.length > 0 && <span className="nav-bell-dot"></span>}
+                  
+                  {/* Dropdown properly positioned */}
+                  {showLinksDropdown && adminData.links && adminData.links.length > 0 && (
+                    <div className="nav-links-dropdown show">
+                      <div className="nav-links-header">Important Links</div>
+                      {adminData.links.map((link: { title: string; url: string }, idx: number) => (
+                        <a key={idx} href={link.url} target="_blank" rel="noopener noreferrer" className="nav-link-item">
+                          {link.title}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {showLinksDropdown && (!adminData.links || adminData.links.length === 0) && (
+                    <div className="nav-links-dropdown show">
+                      <div className="nav-links-header">Important Links</div>
+                      <div style={{ padding: '0.5rem', color: '#94a3b8', fontSize: '0.9rem' }}>No new links at the moment.</div>
+                    </div>
+                  )}
+                </div>
+              </li>
+
               <li className="nav-item">
                 <a
                   className="nav-link nav-link-custom admin-link"
@@ -669,6 +697,12 @@ function Home() {
       <section id="register" className="register-section section-light">
         <div className="container">
           <h2 className="section-title">Register Now</h2>
+          
+          <div className="text-center">
+            <a href="https://drive.google.com/file/d/1NbDI9t2DNpTnbuSJImBD52TQeT8jRTmI/view?usp=drive_link" target="_blank" rel="noopener noreferrer" className="btn-drive-link">
+              <i className="fas fa-external-link-alt"></i> View Registration Guidelines
+            </a>
+          </div>
 
           <div className="tab-switcher">
             <button
@@ -1199,6 +1233,8 @@ function Admin() {
   const [leaderNames, setLeaderNames] = useState<Record<HouseColor, string>>({
     red: '', green: '', yellow: '', blue: ''
   });
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
 
   const [loginError, setLoginError] = useState('');
 
@@ -1275,6 +1311,19 @@ function Admin() {
     saveSiteData({ announcements: updated });
   };
 
+  const handleAddLink = () => {
+    if (!newLinkTitle.trim() || !newLinkUrl.trim()) return;
+    const updated = [...(adminData.links || []), { title: newLinkTitle.trim(), url: newLinkUrl.trim() }];
+    saveSiteData({ links: updated });
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+  };
+
+  const handleDeleteLink = (index: number) => {
+    const updated = (adminData.links || []).filter((_, i) => i !== index);
+    saveSiteData({ links: updated });
+  };
+
   const handleAddTimeline = () => {
     if (!newTimeline.time || !newTimeline.title || !newTimeline.desc) return;
     const updated = [...adminData.timeline, { ...newTimeline, type: adminScheduleTab }];
@@ -1335,9 +1384,36 @@ function Admin() {
     saveSiteData({ collegeEvents: updated });
   };
 
-  const handleDeleteGalleryImage = (index: number) => {
+  const handleDeleteGalleryImage = async (index: number) => {
+    const imgData = adminData.galleryImages[index];
+    if (imgData.publicId) {
+      try {
+        await deleteImage(imgData.publicId);
+      } catch (err) {
+        console.error("Error deleting image from Cloudinary:", err);
+      }
+    }
     const updated = adminData.galleryImages.filter((_: any, i: number) => i !== index);
     saveSiteData({ galleryImages: updated });
+  };
+
+  const handleDeleteAllPhotos = async () => {
+    if (!window.confirm(`Are you sure you want to delete ALL ${galleryImageType} photos? This cannot be undone.`)) return;
+    
+    const photosToDelete = adminData.galleryImages.filter((img: any) => img.type === galleryImageType);
+    const photosToKeep = adminData.galleryImages.filter((img: any) => img.type !== galleryImageType);
+    
+    for (const img of photosToDelete) {
+      if (img.publicId) {
+        try {
+          await deleteImage(img.publicId);
+        } catch (err) {
+          console.error("Error deleting image:", err);
+        }
+      }
+    }
+    
+    saveSiteData({ galleryImages: photosToKeep });
   };
 
   // @ts-ignore
@@ -1404,6 +1480,9 @@ function Admin() {
             <span className="adm-nav-icon">📊</span> Overview
           </a>
           <span className="adm-nav-section-label">CONTENT</span>
+          <a href="#links" className={`adm-nav-item ${activeAdminSection === 'links' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveAdminSection('links'); }}>
+            <span className="adm-nav-icon">🔗</span> Important Links
+          </a>
           <a href="#announcements" className={`adm-nav-item ${activeAdminSection === 'announcements' ? 'active' : ''}`} onClick={(e) => { e.preventDefault(); setActiveAdminSection('announcements'); }}>
             <span className="adm-nav-icon">📢</span> Announcements
           </a>
@@ -1441,6 +1520,7 @@ function Admin() {
           <div className="adm-topbar-left">
             <h1 className="adm-topbar-title">
               {activeAdminSection === 'overview' && 'Dashboard'}
+              {activeAdminSection === 'links' && 'Important Links'}
               {activeAdminSection === 'announcements' && 'Announcements'}
               {activeAdminSection === 'timeline' && 'Event Timeline'}
               {activeAdminSection === 'sports' && 'Sports Events'}
@@ -1451,6 +1531,7 @@ function Admin() {
             </h1>
             <p className="adm-topbar-sub">
               {activeAdminSection === 'overview' && 'Manage your event content'}
+              {activeAdminSection === 'links' && 'Manage important links shown in the notification bell menu'}
               {activeAdminSection === 'announcements' && 'Manage marquee announcements shown on the live site'}
               {activeAdminSection === 'timeline' && 'Add and reorder timeline events for the schedule'}
               {activeAdminSection === 'sports' && 'Manage the Sports Day event list'}
@@ -1622,6 +1703,56 @@ function Admin() {
               </div>
             </section>
           </>
+        )}
+
+        {/* Links Section */}
+        {activeAdminSection === 'links' && (
+          <section className="adm-card">
+            <div className="adm-card-header admin-header-cyan">
+              <span className="adm-card-header-icon">🔗</span>
+              <div>
+                <h2 className="adm-card-title">Important Links</h2>
+                <p className="adm-card-desc">Links managed here will appear in the notification bell dropdown menu</p>
+              </div>
+            </div>
+            <div className="adm-card-body">
+              <div className="adm-add-row">
+                <input
+                  type="text"
+                  className="adm-field-input"
+                  style={{ flex: 1 }}
+                  placeholder="Link Title (e.g., WhatsApp Group)"
+                  value={newLinkTitle}
+                  onChange={(e) => setNewLinkTitle(e.target.value)}
+                />
+                <input
+                  type="url"
+                  className="adm-field-input"
+                  style={{ flex: 2 }}
+                  placeholder="URL (e.g., https://wa.me/...)"
+                  value={newLinkUrl}
+                  onChange={(e) => setNewLinkUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+                />
+                <button className="adm-btn-add" style={{ background: '#06b6d4', borderColor: '#0891b2' }} onClick={handleAddLink}>+ Add</button>
+              </div>
+              <div className="adm-list">
+                {(!adminData.links || adminData.links.length === 0) && (
+                  <div className="adm-empty">No important links yet. Add one above.</div>
+                )}
+                {(adminData.links || []).map((link, idx) => (
+                  <div key={idx} className="adm-list-item">
+                    <span className="adm-list-badge adm-badge-cyan">🔗</span>
+                    <div className="adm-list-text-group">
+                      <strong className="adm-list-title">{link.title}</strong>
+                      <span className="adm-list-sub">{link.url}</span>
+                    </div>
+                    <button className="adm-btn-delete" onClick={() => handleDeleteLink(idx)}>🗑 Delete</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
         {/* Announcements Section */}
@@ -1836,8 +1967,13 @@ function Admin() {
                   style={{ display: 'none' }}
                 />
                 <label htmlFor="galleryImages" className="adm-btn-add">
-                  + Add {galleryImageType === 'sports' ? 'Sports' : 'College'} Photos
+                  + Add Photos
                 </label>
+                {adminData.galleryImages.filter(img => img.type === galleryImageType).length > 0 && (
+                  <button onClick={handleDeleteAllPhotos} className="adm-btn-delete" style={{ marginLeft: 'auto', padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+                    🗑 Delete All {galleryImageType === 'sports' ? 'Sports' : 'College'} Photos
+                  </button>
+                )}
               </div>
               {uploadStatus.gallery && (
                 <div className="adm-upload-status" style={{ marginBottom: '1rem' }}>

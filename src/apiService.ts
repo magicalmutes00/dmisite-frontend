@@ -7,6 +7,11 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 // Types
 // ============================================================
 
+export interface LinkItem {
+    title: string;
+    url: string;
+}
+
 export interface TimelineEvent {
     time: string;
     title: string;
@@ -51,6 +56,7 @@ export interface SiteData {
     girlsSchedule: string;
     matchSchedule: string;
     announcements: string[];
+    links: LinkItem[];
     galleryImages: GalleryImage[];
     timeline: TimelineEvent[];
     sportsEvents: string[];
