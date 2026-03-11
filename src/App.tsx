@@ -313,7 +313,7 @@ function Home() {
 
         <div className="hero-content">
           <h2 style={{ fontSize: 'clamp(2rem, 8vw, 5rem)', lineHeight: '1.1', fontWeight: 900, letterSpacing: '-1px', textTransform: 'uppercase', marginBottom: '1rem', background: 'linear-gradient(45deg, #f8fafc, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', filter: 'drop-shadow(0px 10px 15px rgba(0,0,0,0.8))' }} className="fade-in-up">DMI ENGINEERING COLLEGE</h2>
-          <div className="hero-badge fade-in-up" style={{ animationDelay: '0.2s' }}>✨ March 26,27, 2026 · Aravaimozhi</div>
+          <div className="hero-badge fade-in-up" style={{ animationDelay: '0.2s' }}>✨ March 26,27, 2026 · Aralvaimozhi</div>
           <h1 className="hero-title fade-in-up" style={{ animationDelay: '0.4s' }}>
             Sports Day & College Day <br /><span className="year text-gradient">2026</span>
           </h1>
