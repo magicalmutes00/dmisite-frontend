@@ -164,13 +164,13 @@ export async function getSiteData(): Promise<SiteData> {
 // ============================================================
 
 export function subscribeSiteData(callback: (data: SiteData) => void): () => void {
-    return onSnapshot(siteDataRef, (snapshot) => {
+    return onSnapshot(siteDataRef, (snapshot: any) => {
         if (snapshot.exists()) {
             callback({ ...DEFAULT_SITE_DATA, ...snapshot.data() } as SiteData);
         } else {
             callback(DEFAULT_SITE_DATA);
         }
-    }, (error) => {
+    }, (error: any) => {
         console.error('Error subscribing to site data:', error);
     });
 }

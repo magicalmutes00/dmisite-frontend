@@ -98,7 +98,7 @@ export function useSiteData() {
 
     useEffect(() => {
         // Real-time listener - updates automatically when data changes in Firestore
-        const unsubscribe = onSnapshot(siteDataRef, (snapshot) => {
+        const unsubscribe = onSnapshot(siteDataRef, (snapshot: any) => {
             if (snapshot.exists()) {
                 setData({ ...DEFAULT_DATA, ...snapshot.data() } as SiteData);
             } else {
@@ -107,7 +107,7 @@ export function useSiteData() {
                 setData(DEFAULT_DATA);
             }
             setLoading(false);
-        }, (error) => {
+        }, (error: any) => {
             console.error('Firebase error:', error);
             // Fallback to localStorage if Firebase fails
             setData({
@@ -201,7 +201,7 @@ export function useAdminAuth() {
     const [checking, setChecking] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (u) => {
+        const unsubscribe = onAuthStateChanged(auth, (u: User | null) => {
             setUser(u);
             setChecking(false);
         });
