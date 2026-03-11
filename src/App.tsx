@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route, useNavigate } from 'react-router-dom'
 import './App.css'
-import { useSiteData, saveSiteData, uploadFile } from './useFirebase'
-import type { TimelineEvent, SiteData, GalleryImage } from './useFirebase'
+import { useSiteData, saveSiteData, uploadFile, loginAdmin, logoutAdmin, useAdminAuth, saveRegistration } from './useApi'
+import type { TimelineEvent, SiteData, GalleryImage } from './useApi'
 
 type HouseColor = keyof SiteData['leaders'];
 
@@ -60,8 +60,8 @@ function Home() {
     choreographer: ''
   });
 
-  // Firebase realtime data - updates automatically for all visitors
-  const { data: adminData } = useSiteData();
+  // Realtime data — updates via polling every 30s from backend
+  const { data: adminData, error: dataError, refresh: refreshData } = useSiteData();
 
   const [countdown, setCountdown] = useState({
     days: 0,
@@ -150,19 +150,21 @@ function Home() {
     }
 
     try {
-      const sportsDataWithSheet = { ...sportsFormData, sheetType: 'sports', type: 'Sports Day' };
+      const sportsDataWithSheet = { ...sportsFormData, sheetType: 'sports', type: 'sports' };
       console.log('Submitting sports data:', sportsDataWithSheet);
-      console.log('Script URL:', GOOGLE_SCRIPT_URL_SPORTS);
 
-      const response = await fetch(GOOGLE_SCRIPT_URL_SPORTS, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sportsDataWithSheet)
-      });
+      // Save to MongoDB
+      await saveRegistration(sportsDataWithSheet);
 
-      console.log('Response status:', response);
-      console.log('Response received:', response);
+      // Also save to Google Sheets (if URL is set)
+      if (GOOGLE_SCRIPT_URL_SPORTS) {
+        fetch(GOOGLE_SCRIPT_URL_SPORTS, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sportsDataWithSheet)
+        }).catch(console.warn);
+      }
 
       setSuccessData({
         name: sportsFormData.studentName,
@@ -215,14 +217,21 @@ function Home() {
         selectedGroups: formattedGroups,
         eventName: `${collegeFormData.eventName} [${formattedGroups}]`,
         sheetType: 'college', 
-        type: 'College Day' 
+        type: 'college'
       };
-      await fetch(GOOGLE_SCRIPT_URL_COLLEGE, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(collegeDataWithSheet)
-      });
+
+      // Save to MongoDB
+      await saveRegistration(collegeDataWithSheet);
+
+      // Also save to Google Sheets (if URL is set)
+      if (GOOGLE_SCRIPT_URL_COLLEGE) {
+        fetch(GOOGLE_SCRIPT_URL_COLLEGE, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collegeDataWithSheet)
+        }).catch(console.warn);
+      }
 
       setSuccessData({
         name: collegeFormData.teamName,
@@ -347,6 +356,14 @@ function Home() {
           </div>
         </div>
       </section>
+
+      {/* Backend connection error banner */}
+      {dataError && (
+        <div style={{ background: '#ef4444', color: '#fff', padding: '0.6rem 1rem', textAlign: 'center', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+          <span>⚠️ {dataError}</span>
+          <button onClick={refreshData} style={{ background: 'rgba(255,255,255,0.25)', border: 'none', color: '#fff', borderRadius: '6px', padding: '0.25rem 0.75rem', cursor: 'pointer', fontWeight: 600 }}>Retry</button>
+        </div>
+      )}
 
       {adminData.announcements && adminData.announcements.length > 0 && (
         <div style={{ background: 'rgba(139, 92, 246, 0.1)', borderBottom: '1px solid var(--color-purple)' }}>
@@ -753,6 +770,7 @@ function Home() {
                       <option value="MECH">Mechanical Engineering</option>
                       <option value="CIVIL">Civil Engineering</option>
                       <option value="IT">Information Technology</option>
+                      <option value="S&H">Science & Humanities</option>
                     </select>
                   </div>
                 </div>
@@ -861,7 +879,9 @@ function Home() {
                       <option value="CSE">Computer Science Engineering</option>
                       <option value="ECE">Electronics & Communication</option>
                       <option value="EEE">Electrical & Electronics</option>
-                      <option value="MECH">Mechanical Engineering</option> <option value="IT">Information Technology</option>
+                      <option value="MECH">Mechanical Engineering</option>
+                       <option value="IT">Information Technology</option>
+                       <option value="S&H">Science & Humanities</option>
                     </select>
                   </div>
                 </div>
@@ -1160,8 +1180,11 @@ function Home() {
 
 function Admin() {
   const navigate = useNavigate();
+  // Bug fix: check JWT from localStorage on mount so admin stays logged in on refresh
+  const { isAdmin, checking } = useAdminAuth();
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  // Firebase realtime data
+  const isLoggedIn = isAdmin || isAdminLoggedIn;
+
   const { data: adminData } = useSiteData();
 
   const [newAnnouncement, setNewAnnouncement] = useState('');
@@ -1172,17 +1195,23 @@ function Admin() {
   const [uploadStatus, setUploadStatus] = useState<Record<string, string>>({});
   const [galleryImageType, setGalleryImageType] = useState<'sports' | 'college'>('sports');
   const [activeAdminSection, setActiveAdminSection] = useState<string>('overview');
+  // Local state for leader names — saved only on blur/Enter (not every keystroke)
+  const [leaderNames, setLeaderNames] = useState<Record<HouseColor, string>>({
+    red: '', green: '', yellow: '', blue: ''
+  });
 
-  const handleAdminLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const [loginError, setLoginError] = useState('');
+
+  const handleAdminLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
-    const username = (form.elements.namedItem('username') as HTMLInputElement).value.trim();
     const password = (form.elements.namedItem('password') as HTMLInputElement).value.trim();
-
-    if (username === 'dmiadmin' && password === 'dmi2026') {
+    setLoginError('');
+    try {
+      await loginAdmin(password);
       setIsAdminLoggedIn(true);
-    } else {
-      alert('Invalid credentials!');
+    } catch {
+      setLoginError('Invalid password. Please try again.');
     }
   };
 
@@ -1195,7 +1224,7 @@ function Admin() {
       const newImages = [];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const url = await uploadFile(file, `gallery/${galleryImageType}_${Date.now()}_${i}_${file.name}`);
+        const url = await uploadFile(file, 'gallery');
         newImages.push({ url, type: galleryImageType, label: file.name.split('.')[0] });
       }
       const allImages = [...adminData.galleryImages, ...newImages];
@@ -1203,7 +1232,7 @@ function Admin() {
       setUploadStatus(prev => ({ ...prev, gallery: `✅ ${files.length} ${galleryImageType} image${files.length > 1 ? 's' : ''} uploaded` }));
     } else {
       const file = files[0];
-      const url = await uploadFile(file, `${type}/${Date.now()}_${file.name}`);
+      const url = await uploadFile(file, type.startsWith('leader_') ? 'leaders' : 'schedules');
       if (type === 'boysSchedule' || type === 'girlsSchedule' || type === 'matchSchedule') {
         await saveSiteData({ [type]: url });
         setUploadStatus(prev => ({ ...prev, [type]: '✅ Uploaded' }));
@@ -1216,7 +1245,20 @@ function Admin() {
     }
   };
 
-  const handleLeaderNameChange = (color: HouseColor, name: string) => {
+  // Sync leaderNames local state when adminData loads
+  useEffect(() => {
+    if (adminData?.leaders) {
+      setLeaderNames({
+        red: adminData.leaders.red?.name || '',
+        green: adminData.leaders.green?.name || '',
+        yellow: adminData.leaders.yellow?.name || '',
+        blue: adminData.leaders.blue?.name || '',
+      });
+    }
+  }, [adminData?.leaders]);
+
+  const handleLeaderNameSave = (color: HouseColor) => {
+    const name = leaderNames[color];
     const newLeaders = { ...adminData.leaders, [color]: { ...adminData.leaders[color], name } };
     saveSiteData({ leaders: newLeaders });
   };
@@ -1307,7 +1349,18 @@ function Admin() {
   };
 
 
-  if (!isAdminLoggedIn) {
+  if (checking) {
+    return (
+      <div className="adm-login-wrap" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: 'var(--color-primary)' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+          <p>Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
     return (
       <div className="adm-login-wrap">
         <div className="adm-login-card">
@@ -1318,20 +1371,18 @@ function Admin() {
           </div>
           <form onSubmit={handleAdminLogin} className="adm-login-form">
             <div className="adm-field-group">
-              <label className="adm-label">Username</label>
-              <div className="adm-input-wrap">
-                <span className="adm-input-icon">👤</span>
-                <input type="text" name="username" className="adm-input" placeholder="Enter username" required />
-              </div>
-            </div>
-            <div className="adm-field-group">
               <label className="adm-label">Password</label>
               <div className="adm-input-wrap">
                 <span className="adm-input-icon">🔒</span>
-                <input type="password" name="password" className="adm-input" placeholder="Enter password" required />
+                <input type="password" name="password" className="adm-input" placeholder="Enter admin password" required />
               </div>
             </div>
-            <button type="submit" className="adm-btn-primary">Sign In to Dashboard</button>
+            {loginError && (
+              <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '-0.5rem', marginBottom: '0.5rem' }}>
+                {loginError}
+              </p>
+            )}
+        <button type="submit" className="adm-btn-primary">Sign In to Dashboard</button>
             <button type="button" className="adm-btn-ghost" onClick={() => navigate('/')}>← Back to Home</button>
           </form>
         </div>
@@ -1377,7 +1428,7 @@ function Admin() {
           </a>
         </nav>
         <div className="adm-sidebar-footer">
-          <button className="adm-sidebar-logout" onClick={() => setIsAdminLoggedIn(false)}>
+          <button className="adm-sidebar-logout" onClick={async () => { await logoutAdmin(); setIsAdminLoggedIn(false); window.location.reload(); }}>
             🚪 Logout
           </button>
         </div>
@@ -1856,8 +1907,10 @@ function Admin() {
                         type="text"
                         className="adm-field-input"
                         style={{ marginBottom: '0.75rem' }}
-                        value={adminData.leaders[color as HouseColor].name}
-                        onChange={(e) => handleLeaderNameChange(color as HouseColor, e.target.value)}
+                        value={leaderNames[color as HouseColor]}
+                        onChange={(e) => setLeaderNames(prev => ({ ...prev, [color]: e.target.value }))}
+                        onBlur={() => handleLeaderNameSave(color as HouseColor)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.currentTarget.blur(); } }}
                         placeholder="Leader Name"
                       />
                       <input type="file" id={`leader_${color}`} accept="image/*" onChange={(e) => handleFileUpload(e, `leader_${color}`)} style={{ display: 'none' }} />
