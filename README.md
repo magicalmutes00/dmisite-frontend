@@ -73,3 +73,4 @@ export default defineConfig([
 ```
 "# DMI-Fest" 
 "# DMI-Fest" 
+"# dmisite-frontend" 
